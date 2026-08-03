@@ -49,3 +49,15 @@ checkpoint_list:
     git_commit_final: 3b2ef0e8bf010dfd1525baf93d59616d775b0a55
   - project_path: workflow-infrastructure
     git_commit_final: f4208940e31eaf885cac47449ee6bd3fb4e6225a
+- checkpoint_id: checkpoint-0005
+  project_list:
+  - project_path: agent-plugins
+    git_commit_final: 8bc8db6e9ab057129410145f9b58f13dc6ea6876
+  - project_path: project-standards
+    git_commit_final: 21338c1332172b3a8030d7250e0cff16c7cf1fcd
+  - project_path: vpn-runtime
+    git_commit_final: a0f428d60da84ee84bdf49b80c812d5bcdb13d20
+  - project_path: workflow-control-center
+    git_commit_final: 1a08f52dfaf73199e04b6f7941433e1310e05ee5
+  - project_path: workflow-infrastructure
+    git_commit_final: f4208940e31eaf885cac47449ee6bd3fb4e6225a
