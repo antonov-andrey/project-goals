@@ -1,5 +1,5 @@
 schema_version: 1
-accepted_checkpoint_id: ''
+accepted_checkpoint_id: checkpoint-0005
 checkpoint_list:
 - checkpoint_id: checkpoint-0001
   project_list:
