@@ -1,3 +1,15 @@
 schema_version: 1
-accepted_checkpoint_id: ""
-checkpoint_list: []
+accepted_checkpoint_id: ''
+checkpoint_list:
+- checkpoint_id: checkpoint-0001
+  project_list:
+  - project_path: agent-plugins
+    git_commit_final: 7d024e66e6d2b4cc3d991b6f04a41a470efec09b
+  - project_path: project-standards
+    git_commit_final: 21338c1332172b3a8030d7250e0cff16c7cf1fcd
+  - project_path: vpn-runtime
+    git_commit_final: a0f428d60da84ee84bdf49b80c812d5bcdb13d20
+  - project_path: workflow-control-center
+    git_commit_final: 533b80dc446d4cd2c4eee413a275c35d6fe90d4d
+  - project_path: workflow-infrastructure
+    git_commit_final: f8d35cba708ed491cd6d7ff75f85b6c4b85966e5
