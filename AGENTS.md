@@ -38,7 +38,7 @@
 - `agent-workflows:goal-brainstorm` owns specification and goal preparation.
 - `agent-workflows:goal-checkpoint` owns checkpoint publication.
 - `agent-workflows:goal-merge` owns one-checkpoint-at-a-time merge and primary-environment acceptance.
-- `agent-workflows:goal-delete` owns explicitly authorized task cleanup and task-directory deletion.
+- `agent-workflows:goal-delete` owns explicitly authorized idempotent task-resource cleanup and the retained registry-state transition.
 - Every lifecycle mutation MUST commit and push its exact coordination delta directly to `main` through the serialized transaction owned by the applicable lifecycle skill.
 - Direct edits that bypass the applicable lifecycle skill are forbidden.
 
@@ -56,8 +56,8 @@ project/
 ```
 
 - `AGENTS.md`: repository-root canonical instruction owner.
-- `<common-prefix>/`: one tracked task directory identified by the exact task common prefix.
-- `<common-prefix>/checkpoint.yaml`: canonical checkpoint list and accepted-checkpoint pointer for one task.
+- `<common-prefix>/`: one permanent tracked goal-registry directory identified by the exact task common prefix; cleanup never deletes it.
+- `<common-prefix>/checkpoint.yaml`: canonical checkpoint list, accepted-checkpoint pointer, and retained/deleted task-resource state for one task.
 - `<common-prefix>/goal.md`: concise executable objective prepared by `agent-workflows:goal-brainstorm`.
 - `<common-prefix>/spec.md`: task-specific implementation contract prepared by `agent-workflows:goal-brainstorm`.
 - `DESIGN.md`: canonical task-artifact, checkpoint, merge, and deletion design owner.

@@ -15,7 +15,7 @@
 
 Common prefix является basename, содержит creation date и stable semantic name и совпадает с task branch и `.worktree/<common-prefix>` во всех participating implementation repositories. Repository `project-goals` не создаёт task branch, linked worktree либо bootstrap manifest. Новые project-local `.spec/`, task-artifact symlinks и physical copies запрещены. Уже существующие ignored pre-cutover task files остаются inert до отдельного explicit deletion request и не являются input нового lifecycle.
 
-`spec.md` владеет task-specific implementation contract. `goal.md` владеет concise executable objective и ссылками на `spec.md` и stable source owners. Оба файла готовит `agent-workflows:goal-brainstorm`. `checkpoint.yaml` владеет только published cross-repository closing commit sets и accepted checkpoint identity; он не копирует requirements или completion evidence.
+`spec.md` владеет task-specific implementation contract. `goal.md` владеет concise executable objective и ссылками на `spec.md` и stable source owners. Оба файла готовит `agent-workflows:goal-brainstorm`. `checkpoint.yaml` владеет только published cross-repository closing commit sets, accepted checkpoint identity и current task-resource state; он не копирует requirements или completion evidence.
 
 До activation `goal-brainstorm` может пересматривать тот же task directory непосредственно в canonical checkout ветки `main`. Каждое согласованное изменение task artifacts использует `Coordination Main Transaction` из `agent-plugins/plugins/agent-workflows/skills/goal-brainstorm/references/worktree-contract.md`. Этот owner commit-ит и push-ит только exact task-directory delta, безопасно повторяет disjoint concurrent update и отвергает overlapping change. Никакое согласованное изменение не остаётся только в working tree, отдельной branch либо временном coordination worktree.
 
@@ -26,8 +26,9 @@ Common prefix является basename, содержит creation date и stabl
 `checkpoint.yaml` использует closed schema:
 
 ```yaml
-schema_version: 1
+schema_version: 2
 accepted_checkpoint_id: ""
+task_resource_state: retained
 checkpoint_list:
   - checkpoint_id: checkpoint-0001
     project_list:
@@ -36,6 +37,8 @@ checkpoint_list:
 ```
 
 Empty `accepted_checkpoint_id` означает, что ни один checkpoint ещё не прошёл merge acceptance; `null` для этого не используется. `checkpoint_id` monotonically increases inside one task directory. Existing checkpoint entries immutable and `checkpoint_list` append-only. Обычно `accepted_checkpoint_id` переходит на next checkpoint после полной acceptance. После failed acceptance он может перейти сразу на later fix-forward checkpoint только если для каждого project все intervening checkpoint commits являются ancestors-or-equal его full snapshot commit; поэтому skipped identifiers не означают пропущенный code state.
+
+`task_resource_state` использует только `retained` либо `deleted`. `retained` означает, что private lifecycle state и task-owned external/Git resources ещё могут существовать. Только успешный `goal-delete` переводит поле в `deleted` после idempotent cleanup; обратный переход запрещён. Состояние `deleted` закрывает новые checkpoint, merge и task mutation, но сохраняет `spec.md`, `goal.md` и полный checkpoint history в permanent registry.
 
 Каждый checkpoint является полным snapshot всех participating implementation repositories, включая repositories без нового commit после предыдущего checkpoint. Workspace root является physical parent canonical checkout `project-goals`; `project_path` разрешается только относительно этого exact root. `project_list` сортируется по `project_path`. Каждая entry содержит ровно этот workspace-relative `project_path` и full `git_commit_final` из соответствующего repository. Absolute paths, empty/`.`/`..` components, symlink escape, duplicate projects, abbreviated commits и missing origin objects запрещены. Coordination repository `project-goals` не входит в self-referential `project_list`.
 
@@ -59,9 +62,11 @@ Multi-repository merge возобновляемый, но не атомарны�
 
 ## Task Deletion
 
-Goal completion не удаляет artifacts. `agent-workflows:goal-delete` запускается только по явному запросу пользователя удалить exact common prefix. Skill отвергает unfinished current goal, доказывает accepted/merged/pushed state, выполняет recorded external cleanup hooks, удаляет exact clean worktrees и task refs и только затем удаляет task directory из current `project-goals/main`.
+Goal completion не удаляет resources или artifacts. `agent-workflows:goal-delete` запускается только по явному запросу пользователя удалить exact common prefix. Этот запрос является authority для всего recorded task scope: dirty, unmerged, changed и частично отсутствующие task worktrees/refs не требуют дополнительного разрешения. Уже отсутствующий in-scope resource считается успешно очищенным.
 
-Deletion directory commit сохраняет предыдущие artifacts в Git history. Raw `rm`, автоматическая stale-task эвристика и deletion из-за одного goal status запрещены. Interrupted deletion возобновляется по durable private journal и не переходит к следующей phase без proof предыдущей.
+Skill выполняет current project-owned external cleanup hooks и registry-state mutation из clean temporary `origin/main` checkouts, затем удаляет все recorded task worktrees, remote refs, local refs, legacy bootstrap carriers и private lifecycle state. Shared provider excludes не принадлежат одной goal; удаляется только exact legacy bootstrap exclude вместе с его marker. Skill не требует latest accepted checkpoint, pristine task commit, clean implementation либо `project-goals` main или сохранения исторической branch identity; unrelated canonical changes сохраняются, а safe fast-forward остаётся best-effort. Блокирующая проверка допустима только если exact scope/ownership нельзя установить, можно затронуть primary/shared/foreign state, concurrent recreation мешает завершению либо отсутствие известного ресурса нельзя наблюдать.
+
+Каталог `<common-prefix>/` никогда не удаляется: после успешной очистки `checkpoint.yaml` получает `task_resource_state: deleted` и весь goal остаётся в едином tracked registry. Raw `rm` вне exact private task namespace, автоматическая stale-task эвристика и deletion из-за одного goal status запрещены. Interrupted cleanup возобновляется по durable private journal.
 
 ## Serialization
 
