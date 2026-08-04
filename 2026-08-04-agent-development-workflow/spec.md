@@ -85,7 +85,7 @@ GitHub integration проверяется отдельно до создания
 
 OAuth tokens, API keys и GraphQL credentials не записываются в `project-goals`, plugin source, Linear issues, Git branches, logs или verification receipts. Stable task contract хранит только MCP profile name и non-secret Linear object IDs.
 
-Для этой acceptance применяется контракт прав доступа учётных данных из `agent-plugins/DESIGN.md`: `isAdmin=true` не считается доказательством `admin` scope у текущего MCP OAuth token, а управляемый MCP token не экспортируется. После реализации minimal GraphQL boundary `workflow-configure` получает отдельный admin-capable credential через принадлежащий provider канал ввода секрета, содержимое которого недоступно модели, перечитывает exact `viewer` и `team` и только затем выполняет approved configuration delta. Отсутствующий credential даёт один bounded human setup step и не приводит к partial configuration.
+Для этой acceptance применяется контракт прав доступа учётных данных из `agent-plugins/DESIGN.md`: `isAdmin=true` не считается доказательством `admin` scope у текущего MCP OAuth token, а управляемый MCP token не экспортируется. После реализации minimal GraphQL boundary `workflow-configure` получает отдельный admin-capable credential через пользовательский ввод без echo, перечитывает exact `viewer` и `team` и только затем выполняет approved configuration delta. Credential существует только в памяти exact host process на время одной идемпотентной transaction; crash или retry требуют нового ввода и reconciliation. Отсутствующий credential даёт один bounded human setup step и не приводит к partial configuration.
 
 ## Provider Implementation Structure
 
@@ -410,7 +410,7 @@ Issue task contract является единственным durable execution 
 ## Security
 
 - Linear OAuth или API credentials хранятся только в user-level MCP/provider storage.
-- Fallback GraphQL credential создаётся только после доказанного MCP gap, получает минимально доступный scope и передаётся только host-side typed adapter через user-level secret storage; issue-running Codex child environment его не наследует.
+- Fallback GraphQL credential создаётся только после доказанного MCP gap, получает минимально доступный scope, вводится без echo непосредственно в host-side typed adapter и существует только в памяти одной configuration transaction; issue-running Codex child environment его не наследует.
 - Coding-agent child process не получает raw tracker credentials, если host-side Linear tool может выполнить operation.
 - Issue content считается untrusted input. Task skills применяют repository instructions, sandbox и approval policy независимо от issue prose.
 - Linear scope ограничивается exact team или Project и required labels.
