@@ -106,6 +106,10 @@ plugins/
         repository.py
         bootstrap.py
         transaction.py
+      task_cleanup/
+        model.py
+        resource.py
+        reconciliation.py
       verification/
         model.py
         receipt.py
@@ -214,6 +218,8 @@ Resource lifetime имеет точную семантику: `attempt` очищ
 
 Он также создаёт или принимает role labels, required label `agent:codex`, exact Project statuses `Planned`, `In Progress`, `Completed`, `Canceled` в соответствующих fixed Project categories и проверяет GitHub integration prerequisite. Совпадающее имя в неправильной category, неоднозначный duplicate или foreign conflicting configuration не переписывается. Skill публикует concise verification result; secrets и OAuth material остаются в user-level provider storage.
 
+Если GitHub integration требует browser/admin action, skill не имитирует success: он выдаёт exact bounded human step, не начинает graph publication и после выполнения повторяет read-back probe. Closed acceptance требует реального issue-ID link, поэтому отсутствие integration не заменяется вручную вставленной URL.
+
 ## Graph Publication, Idempotency И Recovery
 
 Linear API не считается multi-object atomic. `task-graph-create` использует activation barrier:
@@ -285,7 +291,7 @@ Local runner получает canonical repository URLs из issue и explicit u
 - fetch-ит exact remote base branch и при первом dispatch атомарно записывает его current commit как attempt baseline в Linear evidence;
 - создаёт или принимает `.worktree/<linear-issue-identifier>`;
 - создаёт или принимает exact task branch;
-- применяет repository-owned `worktree-bootstrap.yaml` через generic copy/link resource contract, не копируя project-specific bootstrap policy в plugin;
+- применяет repository-owned `worktree-bootstrap.yaml` через generic copy/link resource и optional direct-argv cleanup binding, не копируя project-specific bootstrap policy в plugin и не используя shell evaluation;
 - сохраняет transaction state только в Git administration space;
 - не меняет main checkout;
 - не принимает совпадающие bytes как ownership proof;
@@ -368,7 +374,7 @@ Real acceptance сохраняет baseline одной complete disposable flow,
 
 - Идемпотентно очищает local worktrees, local and remote task branches и private transaction state exact `Done` или `Canceled` issue.
 - Для `Canceled` закрывает exact linked open pull requests перед удалением exact task branches; terminal human transition является authority для удаления unmerged task-owned state.
-- Выполняет final `task:cleanup` node в `Todo`, `In Progress` или `Rework` через project-owned cleanup commands для declared issue- и project-lifetime resources; уже отсутствующий owned resource является success.
+- Выполняет final `task:cleanup` node в `Todo`, `In Progress` или `Rework` через exact issue contract и project-owned direct-argv cleanup bindings для declared issue- и project-lifetime resources; уже отсутствующий owned resource является success.
 - После exact reconciliation переводит cleanup issue в `Done`, затем Linear Project в `Completed`, но только когда final acceptance `Done`, все Project nodes terminal и unresolved remediation blockers отсутствуют.
 - Для canceled Project выполняет тот же exact reconciliation без повторной активации и сохраняет Project в `Canceled`.
 - Не удаляет Linear issue, Project, comments, evidence, merged commits или unrelated branches.
