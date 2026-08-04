@@ -1,0 +1,4 @@
+schema_version: 2
+accepted_checkpoint_id: ''
+task_resource_state: retained
+checkpoint_list: []
