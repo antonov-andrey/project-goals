@@ -11,11 +11,11 @@
 - Repository `agent-plugins` содержит plugins `agent-workflows`, `marketplace-agent-tools` и `workflow-container-agent-tools`; отдельного Linear plugin нет.
 - Текущий `agent-workflows:goal-brainstorm` подготавливает implementation worktrees, создаёт `checkpoint.yaml`, активирует persistent goal и запрещает изменение active `goal.md` и `spec.md`.
 - `project-goals/DESIGN.md` связывает каждую goal с одним common-prefix branch set, checkpoint publication, exclusive merge и explicit cleanup.
-- В Codex CLI `0.146.0` настроен и через OAuth авторизован user-level MCP server `linear` с exact URL `https://mcp.linear.app/mcp` и scopes `read`/`write`; project-local Linear configuration отсутствует.
+- В Codex CLI `0.146.0` настроен и через OAuth авторизован user-level MCP server `linear` с exact URL `https://mcp.linear.app/mcp` и scopes `read`/`write`, без admin scope; project-local Linear configuration отсутствует.
 - Авторизованный Linear user имеет ID `71a7a6e4-9a30-4050-9106-de34a9e25b6f`, display name `antonov.andrey`, административные права, active membership и не является guest.
 - OAuth workspace содержит один active team: ID `353a3554-d4c0-4838-bf96-6f8798448419`, name `Andrey Antonov`, key `AND`; Linear Projects ещё не созданы.
 - В team присутствуют стандартные issue statuses `Backlog`, `Todo`, `In Progress`, `Done`, `Canceled` и system-managed `Duplicate`; требуемые `Human Review`, `Rework` и `Merging` отсутствуют.
-- Текущий official MCP tool surface читает issue statuses и выполняет основные Project/issue/document/label operations, но не предоставляет mutation для team issue statuses или workspace Project statuses. Это доказанный configuration gap для contract probe; minimal typed GraphQL boundary допускается только для этих отсутствующих operations и других отдельно доказанных gaps.
+- Текущий official MCP tool surface читает issue statuses и выполняет основные Project/issue/document/label operations, но не предоставляет mutation для team issue statuses или workspace Project statuses. Это доказанный configuration gap для contract probe; minimal typed GraphQL boundary допускается только для этих отсутствующих operations и других отдельно доказанных gaps. Admin-capable GraphQL credential сейчас не настроен.
 - Remote repository `antonov-andrey/development-infrastructure` был пуст. После явного одобрения пользователя создан canonical `main` с одним нейтральным initial commit `18c8df7846dbd545f6b8370b590b7a9275d33951`; repository не содержит Product или infrastructure implementation.
 - Symphony runtime, Symphony EC2 и Codex worker EC2 не развёрнуты и не входят в текущую implementation boundary.
 
@@ -84,6 +84,8 @@ Real integration и end-to-end acceptance этой task выполняются �
 GitHub integration проверяется отдельно до создания code-mutating acceptance node. Если установка или расширение repository access требует browser/admin action, workflow останавливается до Linear graph activation, показывает один exact bounded step и после его выполнения повторяет read-back. Пустой diff list или вручную добавленная PR URL не считаются доказательством integration.
 
 OAuth tokens, API keys и GraphQL credentials не записываются в `project-goals`, plugin source, Linear issues, Git branches, logs или verification receipts. Stable task contract хранит только MCP profile name и non-secret Linear object IDs.
+
+Linear user role и credential capability проверяются раздельно: `isAdmin=true` не считается доказательством admin scope у текущего MCP OAuth token. MCP-managed token не экспортируется и не читается plugin code. После реализации minimal GraphQL boundary `workflow-configure` получает отдельный admin-capable personal API key либо OAuth credential только через non-model-visible user-level secret input, перечитывает exact viewer/team до mutation и сохраняет secret только в host-side provider storage. Если future official MCP покрывает exact admin mutations, отдельный credential не запрашивается. Отсутствующий required credential даёт bounded human setup step и не приводит к partial configuration.
 
 ## Provider Implementation Structure
 
@@ -453,6 +455,7 @@ Issue task contract является единственным durable execution 
 До bulk implementation проверить на реальном target:
 
 - official Linear MCP authentication и доступный tool surface;
+- раздельную проверку authenticated user role, MCP OAuth scopes и admin-capable GraphQL credential path без раскрытия secret;
 - fresh Codex process reconnect и typed unauthenticated/expired-session behavior без partial mutation или credential disclosure;
 - создание и category semantics team issue statuses, Project statuses и labels;
 - создание Project, Project document, issues и blocker relations;
