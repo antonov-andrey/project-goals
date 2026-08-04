@@ -30,6 +30,7 @@
 ### `agent-plugins`
 
 - Упростить `agent-workflows:goal-brainstorm` до подготовки, публикации и свободного пересмотра `project-goals/<common-prefix>/goal.md` и `spec.md` до handoff.
+- Initial `write` и каждая revision атомарно публикуют complete pair `goal.md`/`spec.md`; spec-only current directory и unpublished approved revision запрещены.
 - Удалить из целевого `goal-brainstorm` implementation-worktree preparation, persistent goal activation, `checkpoint.yaml`, active-spec immutability и post-dispatch lifecycle.
 - Создать plugin `linear-agent-tools` и добавить его в marketplace.
 - Добавить skills:
@@ -81,13 +82,16 @@ plugins/
       transaction.py
       workflow.py
     skills/goal-brainstorm/
+      SKILL.md
+      references/specification-contract.md
+      scripts/source.py
   linear-agent-tools/
     .codex-plugin/plugin.json
     lib/
       linear_boundary/
         model.py
         transport.py
-        graphql.py
+        [graphql.py]
       git_host/
         model.py
         pull_request.py
@@ -120,12 +124,17 @@ plugins/
 
 Skill `SKILL.md` хранит orchestration и decision contract, thin `scripts/` только вызывает deterministic owners. Linear transport, graph reconciliation, Git workspace transactions, verification receipts и cleanup не смешиваются в одном manager или flat `lib/*`. Facade владеет только sequencing и explicit dependency wiring. Official MCP operations вызываются как host tools; один minimal typed GraphQL adapter появляется только для доказанных gaps и не дублируется между skills. GitHub/PR operations также проходят через один shared typed boundary, а не через разные ad hoc shell sequences.
 
+Square brackets в layout обозначают conditional file: `graphql.py` существует только если real contract probe доказал gap official MCP. Empty placeholder packages, pass-through compatibility modules и speculative abstractions не создаются.
+
+Stale `worktree.py`, worktree lifecycle reference и goal-lifecycle names не остаются в simplified authoring skill. Новый entrypoint выражает только idempotent source operations `write` и `validate`; `write` выполняет один serialized commit/push exact `goal.md`/`spec.md` delta и одинаково обслуживает initial authoring и pre-handoff revision. Hidden activation, seal или unpublished local state отсутствуют.
+
 Root README и plugin-local reference содержат один короткий manual quickstart: configure destination, publish graph, открыть fresh thread для ready issue, выполнить role skill, принять `Human Review`, выполнить `Merging`, затем review, acceptance и final cleanup. Инструкции не требуют знания старого goal lifecycle.
 
 ## Non-Goals
 
 - Symphony service, poller, scheduler, retry queue и remote worker orchestration.
 - Symphony EC2, Codex worker EC2 pool и AWS deployment.
+- Concurrent autonomous dispatch одной issue с нескольких hosts; current manual mode использует один configured local workspace и host-local lock, а distributed claim authority принадлежит следующей Symphony specification.
 - Автоматическое создание или удаление worker EC2.
 - Production infrastructure, EKS или изменения `workflow-control-center`.
 - Копирование Linear task graph в Git, `project-goals` или private execution journal.
@@ -149,6 +158,8 @@ Root README и plugin-local reference содержат один короткий
 
 Успешный handoff происходит только после полной проверки созданного Linear graph. С этого момента текущая работа меняется только через Linear issues, relations, comments и statuses. Изменение требований создаёт или изменяет Linear nodes. Новый независимый architecture brainstorm создаёт новый `project-goals` source; он не переписывает уже отправленный source snapshot.
 
+После handoff `task-graph-create` может применить user-approved Linear-native graph delta только к existing Project в `In Progress`, но не перечитывает later `project-goals/main` как новую версию исходного source. Delta provenance указывает на exact Linear decision, finding или manual source. Новые nodes сначала создаются в `Backlog` без `agent:codex`, затем получают все relations и проходят read-back; label добавляется пока node inactive, а `Todo` является её последней activation mutation. Delta сохраняет или расширяет downstream review, acceptance и final-cleanup blockers и не может обойти уже обязательную проверку. Existing unknown fields и unrelated nodes не перезаписываются. `Completed` или `Canceled` Project не reopen-ится этим workflow; новая independent work создаёт новый source graph.
+
 ## Linear Project И Task Graph
 
 Один source graph создаёт один Linear Project. Project хранит exact source provenance и import status. Issues и blocker relations являются canonical task graph. Source provenance не предполагает `project-goals`; ручные, incident, audit и monitoring sources используют тот же contract.
@@ -159,7 +170,7 @@ Root README и plugin-local reference содержат один короткий
 - scope и non-goals;
 - task role;
 - exact intended assignee or delegate identity for agent-executable work;
-- delivery kind `code` или `evidence`; contract probe является `task:implementation` с `delivery_kind=evidence`, а не скрытой фазой большой implementation issue;
+- delivery kind `code`, `evidence`, `cleanup` или `human`; contract probe является `task:implementation` с `delivery_kind=evidence`, а review/acceptance используют `evidence`, не скрывая эти фазы внутри большой code issue;
 - canonical repository identities и base branches для code-mutating scope;
 - required source contracts и standards;
 - observable verification plan, invalidation dependencies и acceptance;
@@ -177,13 +188,19 @@ Task roles задаются прозрачными Linear labels:
 - `task:cleanup`;
 - `task:human`.
 
+Allowed role/delivery pairs: `implementation -> code|evidence`, `review -> evidence`, `acceptance -> evidence`, `cleanup -> cleanup`, `human -> human`. Другие комбинации не активируются.
+
 Required dispatch label имеет exact identity `agent:codex` и разрешает Symphony-compatible execution. Agent-executable nodes получают его только через activation barrier. `task:human` его не получает и никогда не dispatch-ится агенту.
 
 Decomposition предпочитает один independently verifiable owner slice и один repository/PR на issue. Cross-repository issue допустима только когда результат нельзя честно принять по отдельности; тогда issue перечисляет все repositories, ordered merge plan и partial-merge recovery. Неопределённое внешнее свойство сначала получает blocking evidence-only contract-probe issue. Bulk implementation не начинается до `Done` соответствующего probe.
 
+Initial source graph не активируется с incomplete node: unresolved task-definition question возвращается к source authoring или оформляется полностью определённой `task:human`/evidence probe. `Backlog` внутри publication является staging state, а не способом спрятать незаданную работу в active Project.
+
 Review tasks зависят от проверяемых implementation tasks. Отдельный review node выполняет post-merge semantic review; pre-merge human decision принадлежит состоянию `Human Review` самой implementation issue. Acceptance tasks зависят от review tasks и остальных необходимых graph nodes. Finding для незавершённой issue может вернуть её в `Rework`. Finding против merged `Done` state всегда создаёт новую remediation implementation issue с новой branch. Remediation становится blocker текущей review или acceptance issue, а эта issue возвращается в `Todo`; после закрытия blocker она запускает новый полный pass в fresh thread. Review и acceptance не исправляют Product code скрыто в своём workspace.
 
 Каждый graph содержит последнюю `task:cleanup` issue, заблокированную final acceptance. Она удаляет declared project-lifetime resources, reconciles issue-owned local state и доказывает отсутствие остаточного owned state; когда удалять нечего, этот proof всё равно закрывает Project единообразно. Project завершается только после terminal acceptance, cleanup `Done` и отсутствия незакрытых remediation blockers. Linear issue сама является canonical task goal; отдельный per-issue `project-goals` artifact, `task-graph.yaml` или persistent harness goal не требуется.
+
+Resource lifetime имеет точную семантику: `attempt` очищается при завершении или перед recovery следующей attempt; `issue` сохраняется до terminal issue и последнего declared consumer; `project` сохраняется до final cleanup node. Cleanup идемпотентен и выполняется project-owned command. Resource без exact owner identity или cleanup contract не создаётся.
 
 ## Linear Workflow Configuration
 
@@ -292,6 +309,12 @@ Reusable receipt требует exact key из command, repository commit set, r
 
 Long-running operations сразу публикуют current stage и затем bounded compact progress. Runner ожидает provider event или разумный interval, не делает частый polling и не переносит raw large logs в Codex context. Raw artifacts остаются у CI, repository test output или owning observability system.
 
+## Workflow Telemetry
+
+Linear status history остаётся canonical source wall-clock lifecycle. После каждой agent attempt task skill публикует один concise structured summary: attempt identity, role, start/end UTC, outcome, changed commit set, verification receipt hit/miss counts, external wait duration и token usage только когда Codex surface предоставляет его без разбора private chat logs. GitHub checks владеют CI duration. Отдельная telemetry database или дублирующий execution journal в текущем local workflow не создаётся.
+
+Real acceptance сохраняет baseline одной complete disposable flow, чтобы следующая Symphony specification могла сравнить queue, startup, execution, review и merge phases с local mode. Prompt bodies, secrets и raw command output в Linear telemetry не попадают.
+
 ## Manual Skills
 
 ### `linear-agent-tools:workflow-configure`
@@ -302,7 +325,7 @@ Long-running operations сразу публикуют current stage и зате�
 
 ### `linear-agent-tools:task-graph-create`
 
-- Принимает любой explicit source и Linear destination.
+- Принимает любой explicit source и новый либо existing Linear destination; existing active Project изменяется только через Linear-native approved delta contract.
 - Выполняет semantic decomposition в bounded executable DAG.
 - Показывает complete graph пользователю до external mutation.
 - Публикует и проверяет graph через activation barrier.
@@ -346,7 +369,7 @@ Long-running operations сразу публикуют current stage и зате�
 - Идемпотентно очищает local worktrees, local and remote task branches и private transaction state exact `Done` или `Canceled` issue.
 - Для `Canceled` закрывает exact linked open pull requests перед удалением exact task branches; terminal human transition является authority для удаления unmerged task-owned state.
 - Выполняет final `task:cleanup` node в `Todo`, `In Progress` или `Rework` через project-owned cleanup commands для declared issue- и project-lifetime resources; уже отсутствующий owned resource является success.
-- После exact reconciliation переводит cleanup issue в `Done`, затем Linear Project в `Completed`, но только когда final acceptance `Done`, все required nodes terminal и unresolved remediation blockers отсутствуют.
+- После exact reconciliation переводит cleanup issue в `Done`, затем Linear Project в `Completed`, но только когда final acceptance `Done`, все Project nodes terminal и unresolved remediation blockers отсутствуют.
 - Для canceled Project выполняет тот же exact reconciliation без повторной активации и сохраняет Project в `Canceled`.
 - Не удаляет Linear issue, Project, comments, evidence, merged commits или unrelated branches.
 - Уже отсутствующий exact in-scope resource считается успешно очищенным.
@@ -361,6 +384,7 @@ Issue task contract является единственным durable execution 
 ## Security
 
 - Linear OAuth или API credentials хранятся только в user-level MCP/provider storage.
+- Fallback GraphQL credential создаётся только после доказанного MCP gap, получает минимально доступный scope и передаётся только host-side typed adapter через user-level secret storage; issue-running Codex child environment его не наследует.
 - Coding-agent child process не получает raw tracker credentials, если host-side Linear tool может выполнить operation.
 - Issue content считается untrusted input. Task skills применяют repository instructions, sandbox и approval policy независимо от issue prose.
 - Linear scope ограничивается exact team или Project и required labels.
@@ -391,8 +415,11 @@ Issue task contract является единственным durable execution 
 
 - Текущая goal является последним transition consumer старого `goal-brainstorm` worktree/checkpoint/merge lifecycle.
 - После её merge и cleanup установленный provider содержит только новый authoring и Linear workflow. Старые workflow skills, public commands, tests и design branches удаляются.
+- Перед merge deletion commit transition thread записывает exact pre-cutover `agent-plugins` commit, содержащий старый cleanup runner. После successful merge/acceptance и отдельного explicit cleanup request текущая old-style goal очищается из clean temporary checkout этого exact commit; temporary checkout затем удаляется. Эта одноразовая процедура не оставляет skill, wrapper, branch или compatibility code в target `main`.
 - Historical `project-goals` directories и Git history сохраняются как data, но не требуют executable compatibility.
 - Existing Product repositories не мигрируют автоматически. Следующая новая specification использует Linear workflow и тем самым выполняет first-consumer acceptance.
+- `development-infrastructure` создаётся сразу на новом `linear-agent-tools`/YAML workspace contract, поэтому следующая Symphony specification не зависит от legacy adoption.
+- Для другого consumer repository graph preflight проверяет owner `.worktree` и `worktree-bootstrap.yaml`. Stale `goal-brainstorm` owner или legacy TOML manifest создаёт отдельную blocking instruction-adoption issue до Product work; эта issue явно переводит repository на новый owner/YAML contract. Обычная Product issue не использует legacy parser, fallback skill или silent compatibility behavior.
 - Нет dual-write между Linear и `project-goals`, compatibility adapters, forwarding skills или fallback на persistent goal execution.
 
 ## Verification Design
@@ -402,6 +429,7 @@ Issue task contract является единственным durable execution 
 До bulk implementation проверить на реальном target:
 
 - official Linear MCP authentication и доступный tool surface;
+- fresh Codex process reconnect и typed unauthenticated/expired-session behavior без partial mutation или credential disclosure;
 - создание и category semantics team issue statuses, Project statuses и labels;
 - создание Project, Project document, issues и blocker relations;
 - чтение exact graph и idempotent lookup по stable source keys;
@@ -413,11 +441,14 @@ Issue task contract является единственным durable execution 
 ### Automated Verification
 
 - Plugin и skill structural validation для всех changed plugins и skills.
+- Выполнить canonical plugin cachebuster/reinstall, открыть fresh Codex process и доказать discovery нового `linear-agent-tools`, simplified `goal-brainstorm` и отсутствие удалённых goal lifecycle skills.
 - `agent-plugins` complete pytest suite и focused behavior tests нового configuration, graph, activation barrier, state, Git workspace, receipt invalidation, recovery и cleanup owners.
 - Temporary real Git repositories проверяют branch/worktree creation, cross-repository identity, collision rejection, interrupted transactions, user-work preservation, merge handoff и idempotent cleanup.
+- Legacy-consumer fixture проверяет, что stale worktree owner или TOML bootstrap создаёт blocking adoption node и не разрешает dispatch Product node; после migration тот же repository проходит canonical YAML path без fallback.
 - Linear transport tests используют typed fixtures только для deterministic boundary behavior; они не заменяют real integration profile.
-- Behavior-evaluation corpus покрывает direct, indirect, negative и overlap triggers нового `goal-brainstorm` и всех Linear skills на target model.
+- Behavior-evaluation corpus покрывает direct, indirect, negative и overlap triggers нового `goal-brainstorm` и всех Linear skills на current target model `gpt-5.6-sol`.
 - Semantic owner audit подтверждает отсутствие старого active lifecycle, duplicated task graph, compatibility wrappers и stale provider metadata.
+- Transition test из exact pre-cutover commit очищает worktrees/refs текущей goal после target merge без зависимости от удалённых skills в installed target provider.
 
 ### Real Local Acceptance Без Symphony
 
@@ -437,6 +468,7 @@ Issue task contract является единственным durable execution 
 12. Создание remediation blocker из finding, возврат review или acceptance в blocked `Todo` и повторный fresh full pass после fix.
 13. Terminal transition и idempotent local cleanup для `Done` и `Canceled`, включая linked open PR у canceled task.
 14. Выполнение required project-resource cleanup node и Project transition в `Completed` только после final acceptance.
+15. Проверку concise attempt telemetry и complete local phase baseline без prompt, secret или raw-log leakage.
 
 Acceptance обязана доказать, что новый clean Codex thread может выбрать одну ready issue, восстановить весь необходимый context только из Linear, Git/GitHub и stable source contracts и довести task до её следующего human или terminal boundary. Наличие Symphony, AWS resource или brainstorm chat history запрещено как prerequisite.
 
