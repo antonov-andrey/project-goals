@@ -2,7 +2,7 @@
 
 ## Требуемый Результат
 
-Локальная разработка через Codex CLI или Codex App должна образовать самостоятельный замкнутый workflow без Symphony. `agent-workflows:goal-brainstorm` подготавливает свободно пересматриваемые `goal.md` и `spec.md` в `project-goals`. Отдельный Linear workflow преобразует любой согласованный source в один полностью определённый Linear task graph. После успешной отправки Linear становится единственным владельцем operational state, зависимостей, попыток, review, acceptance, branches и pull requests.
+Локальная разработка через Codex CLI или Codex App должна образовать самостоятельный замкнутый workflow без Symphony. `agent-workflows:goal-brainstorm` подготавливает свободно пересматриваемые `goal.md` и `spec.md` в `project-goals`. Отдельный Linear workflow преобразует любой согласованный source в один полностью определённый Linear task graph. После успешной отправки Linear становится единственным владельцем operational lifecycle, зависимостей, попыток, review, acceptance и связей с branches и pull requests; сами Git objects и PR остаются у Git и GitHub.
 
 Пользователь должен иметь возможность после завершения этой задачи подготовить следующую specification, отправить её в Linear, вручную запустить каждую готовую issue в новой Codex session, выполнить code, tests, commit, push, pull request, review, rework, merge и final acceptance, а затем очистить локальный workspace. Ни один этап этого цикла не должен требовать Symphony, AWS или историю brainstorm-чата.
 
@@ -33,6 +33,7 @@
 - Удалить из целевого `goal-brainstorm` implementation-worktree preparation, persistent goal activation, `checkpoint.yaml`, active-spec immutability и post-dispatch lifecycle.
 - Создать plugin `linear-agent-tools` и добавить его в marketplace.
 - Добавить skills:
+  - `linear-agent-tools:workflow-configure`;
   - `linear-agent-tools:task-graph-create`;
   - `linear-agent-tools:task-implement`;
   - `linear-agent-tools:task-review`;
@@ -62,7 +63,64 @@
 
 - Подключить официальный Linear MCP server к Codex user configuration и выполнить interactive authentication.
 - Не добавлять project-local Codex configuration ради Linear.
+- `linear-agent-tools:workflow-configure` обязан создать или проверить exact team issue workflow и workspace-level Project workflow до первой graph publication; `task-graph-create` не исправляет global configuration скрыто.
 - Если официальный MCP не предоставляет одну обязательную graph operation, сначала доказать это contract probe. Затем реализовать минимальный Linear-owned GraphQL boundary в `linear-agent-tools`, не создавая generic CRUD wrapper и не передавая raw token coding-agent child process.
+
+## Provider Implementation Structure
+
+Старый mixed `plugins/agent-workflows/lib/goal_lifecycle/` не сохраняется под новым именем. Из него переносится только реально reusable serialized direct-main authoring transaction в cohesive `goal_authoring` package; checkpoint, merge, deletion, persistent-goal, participant-worktree и sealed-state owners удаляются вместе с tests и public surfaces.
+
+Новый provider использует owner packages с односторонними зависимостями:
+
+```text
+plugins/
+  agent-workflows/
+    lib/goal_authoring/
+      model.py
+      repository.py
+      transaction.py
+      workflow.py
+    skills/goal-brainstorm/
+  linear-agent-tools/
+    .codex-plugin/plugin.json
+    lib/
+      linear_boundary/
+        model.py
+        transport.py
+        graphql.py
+      git_host/
+        model.py
+        pull_request.py
+      task_graph/
+        issue-contract.md
+        model.py
+        publication.py
+        reconciliation.py
+      task_workspace/
+        model.py
+        lock.py
+        repository.py
+        bootstrap.py
+        transaction.py
+      verification/
+        model.py
+        receipt.py
+        invalidation.py
+    skills/
+      workflow-configure/
+      task-graph-create/
+      task-implement/
+      task-review/
+      task-accept/
+      task-merge/
+      task-cleanup/
+```
+
+`task_graph/issue-contract.md` владеет одним shared rendered issue template с role-conditional sections: Outcome, Source, Scope, Non-goals, Delivery kind, Repositories and base branches, Required contracts and skills, Blockers, Resource ownership/lifetime, Verification plan, Human decision boundary и Evidence/links. Template не копируется по skills и после publication становится обычным visible Linear issue content.
+
+Skill `SKILL.md` хранит orchestration и decision contract, thin `scripts/` только вызывает deterministic owners. Linear transport, graph reconciliation, Git workspace transactions, verification receipts и cleanup не смешиваются в одном manager или flat `lib/*`. Facade владеет только sequencing и explicit dependency wiring. Official MCP operations вызываются как host tools; один minimal typed GraphQL adapter появляется только для доказанных gaps и не дублируется между skills. GitHub/PR operations также проходят через один shared typed boundary, а не через разные ad hoc shell sequences.
+
+Root README и plugin-local reference содержат один короткий manual quickstart: configure destination, publish graph, открыть fresh thread для ready issue, выполнить role skill, принять `Human Review`, выполнить `Merging`, затем review, acceptance и final cleanup. Инструкции не требуют знания старого goal lifecycle.
 
 ## Non-Goals
 
@@ -100,38 +158,64 @@
 - один concrete outcome;
 - scope и non-goals;
 - task role;
+- exact intended assignee or delegate identity for agent-executable work;
+- delivery kind `code` или `evidence`; contract probe является `task:implementation` с `delivery_kind=evidence`, а не скрытой фазой большой implementation issue;
 - canonical repository identities и base branches для code-mutating scope;
 - required source contracts и standards;
-- observable verification и acceptance;
+- observable verification plan, invalidation dependencies и acceptance;
 - explicit blocker relations;
+- exact local или external resource ownership и lifetime `attempt`, `issue` или `project`, когда task создаёт ресурсы;
 - branch и pull-request links, когда они существуют;
 - source provenance;
-- сведения, достаточные для запуска в fresh Codex session без brainstorm-chat history.
+- compact task-relevant requirements and exact source sections, sufficient для запуска в fresh Codex session без brainstorm-chat history и без копирования полного source во все issues.
 
 Task roles задаются прозрачными Linear labels:
 
 - `task:implementation`;
 - `task:review`;
-- `task:acceptance`.
+- `task:acceptance`;
+- `task:cleanup`;
+- `task:human`.
 
-Отдельный required dispatch label разрешает Symphony-compatible execution. Exact label identity принадлежит Linear workflow configuration и одинаково применяется в local и future Symphony modes.
+Required dispatch label имеет exact identity `agent:codex` и разрешает Symphony-compatible execution. Agent-executable nodes получают его только через activation barrier. `task:human` его не получает и никогда не dispatch-ится агенту.
 
-Review tasks зависят от проверяемых implementation tasks. Acceptance tasks зависят от review tasks и остальных необходимых graph nodes. Finding создаёт remediation issue или возвращает exact owning issue в `Rework`, добавляет blocker relation и предотвращает acceptance до повторной проверки. Review и acceptance не исправляют Product code скрыто в своём workspace.
+Decomposition предпочитает один independently verifiable owner slice и один repository/PR на issue. Cross-repository issue допустима только когда результат нельзя честно принять по отдельности; тогда issue перечисляет все repositories, ordered merge plan и partial-merge recovery. Неопределённое внешнее свойство сначала получает blocking evidence-only contract-probe issue. Bulk implementation не начинается до `Done` соответствующего probe.
+
+Review tasks зависят от проверяемых implementation tasks. Отдельный review node выполняет post-merge semantic review; pre-merge human decision принадлежит состоянию `Human Review` самой implementation issue. Acceptance tasks зависят от review tasks и остальных необходимых graph nodes. Finding для незавершённой issue может вернуть её в `Rework`. Finding против merged `Done` state всегда создаёт новую remediation implementation issue с новой branch. Remediation становится blocker текущей review или acceptance issue, а эта issue возвращается в `Todo`; после закрытия blocker она запускает новый полный pass в fresh thread. Review и acceptance не исправляют Product code скрыто в своём workspace.
+
+Каждый graph содержит последнюю `task:cleanup` issue, заблокированную final acceptance. Она удаляет declared project-lifetime resources, reconciles issue-owned local state и доказывает отсутствие остаточного owned state; когда удалять нечего, этот proof всё равно закрывает Project единообразно. Project завершается только после terminal acceptance, cleanup `Done` и отсутствия незакрытых remediation blockers. Linear issue сама является canonical task goal; отдельный per-issue `project-goals` artifact, `task-graph.yaml` или persistent harness goal не требуется.
+
+## Linear Workflow Configuration
+
+`linear-agent-tools:workflow-configure` принимает exact workspace и team, показывает planned team-global mutations и выполняет их только после явного подтверждения. Он создаёт или принимает exact issue statuses в Linear fixed categories:
+
+- `Backlog` — `Backlog`;
+- `Todo` — `Unstarted`;
+- `In Progress`, `Human Review`, `Rework`, `Merging` — `Started`;
+- `Done` — `Completed`;
+- `Canceled` — `Canceled`.
+
+Он также создаёт или принимает role labels, required label `agent:codex`, exact Project statuses `Planned`, `In Progress`, `Completed`, `Canceled` в соответствующих fixed Project categories и проверяет GitHub integration prerequisite. Совпадающее имя в неправильной category, неоднозначный duplicate или foreign conflicting configuration не переписывается. Skill публикует concise verification result; secrets и OAuth material остаются в user-level provider storage.
 
 ## Graph Publication, Idempotency И Recovery
 
 Linear API не считается multi-object atomic. `task-graph-create` использует activation barrier:
 
-1. Создаёт или принимает exact Linear Project в non-dispatchable import state.
-2. Записывает complete intended decomposition в Linear Project и назначает каждому node стабильный source key.
+`source_fingerprint` является SHA-256 canonical source identity и content. Каждый approved node получает user-visible stable `node_key`, не зависящий от изменяемого title или Linear issue number; full source key равен паре `(source_fingerprint, node_key)`. Project и issue descriptions хранят эти keys для exact lookup и conflict detection.
+
+1. Создаёт или принимает exact Linear Project в status `Planned`, который всегда означает `dispatchable=false` для всех его issues.
+2. Записывает visible provider-owned import plan в Linear Project document: canonical source identity, content fingerprint, approved normalized node definitions, stable source keys и expected edges. Это Linear-local transaction envelope и import receipt, а не второй operational graph.
 3. Создаёт или принимает issues в `Backlog` без dispatch label.
 4. Создаёт или принимает exact blocker relations и metadata.
-5. Перечитывает Project, все issues и relations и сравнивает их с intended graph.
-6. Только после полного совпадения добавляет dispatch label и переводит root nodes без unresolved blockers в `Todo`.
+5. Пока Project остаётся `Planned`, добавляет `agent:codex` только agent-executable nodes и переводит все полностью определённые nodes в `Todo`; unresolved blockers независимо сохраняют `dispatchable=false`.
+6. Перечитывает Project, import plan, все issues, relations, labels и statuses и сравнивает их с approved graph.
+7. Только после полного совпадения одним Project transition меняет `Planned -> In Progress`. Это единственная activation mutation.
 
 Повторный вызов принимает только объекты с exact Project identity и stable source keys, создаёт отсутствующие объекты и исправляет только provider-owned import fields. Unknown conflicting objects не перезаписываются. Partial import остаётся полностью в Linear и не запускается Symphony. Отдельный `task-graph.yaml` или persistent private graph запрещён.
 
-Source считается отправленным только после успешного activation barrier. До этого пользователь может явно отменить import, удалить или cancel созданные draft objects и продолжить пересмотр source.
+Source считается отправленным только после доказанного Project transition в `In Progress`. До этого пользователь может явно отменить import, перевести exact draft Project и его draft issues в `Canceled` и продолжить пересмотр source. После `In Progress` import plan не переигрывает graph из source: дальнейшие изменения принадлежат Linear.
+
+Явная отмена уже active Project переводит незавершённые issues в `Canceled`, останавливает новые dispatch и сохраняет Linear history. Exact terminal cleanup остаётся разрешённой ручной операцией даже у canceled Project; после cleanup Project остаётся `Canceled`, а не `Completed`. Частично отсутствующие owned resources являются success и не препятствуют завершению cleanup.
 
 ## Workflow Status Contract
 
@@ -146,13 +230,14 @@ Linear team использует statuses:
 - `Done`: terminal successful state.
 - `Canceled`: terminal canceled state.
 
-Symphony-compatible active states: `Todo`, `In Progress`, `Rework`, `Merging`. Terminal states: `Done`, `Canceled`. `Backlog` и `Human Review` являются inactive non-terminal states.
+Symphony-compatible active states: `Todo`, `In Progress`, `Rework`, `Merging`. Terminal states: `Done`, `Canceled`. `Backlog` и `Human Review` являются inactive non-terminal states. Linear category `Started` у `Human Review` не делает его dispatchable: scheduler использует exact active-state allowlist.
 
 `dispatchable=true` требует одновременно:
 
 - active state;
+- status category `started` owning Linear Project, represented by exact status `In Progress`;
 - required dispatch label;
-- разрешённого assignee или delegate;
+- assignee или delegate, совпадающего с exact execution identity issue;
 - отсутствия unresolved blockers;
 - известного task role;
 - complete issue contract.
@@ -160,39 +245,60 @@ Symphony-compatible active states: `Todo`, `In Progress`, `Rework`, `Merging`. T
 Status transitions:
 
 - `Backlog -> Todo`: task definition готова; blockers могут оставаться.
-- `Todo -> In Progress`: manual runner или future Symphony доказал dispatchability и создал или принял exact workspace.
-- `In Progress -> Human Review`: required result, verification, commit, push, PR и evidence готовы в применимой части.
+- `Todo -> In Progress`: manual runner или future Symphony доказал dispatchability, зафиксировал attempt baseline и создал или принял exact workspace.
+- `In Progress -> Human Review`: required result, verification, commit, push, PR, required CI и evidence готовы в применимой части.
 - `Human Review -> Rework`: человек отклонил candidate или потребовал изменения.
-- `Rework -> In Progress`: fresh Codex App Server thread принимает тот же issue, workspace, branches и PR без автоматического reset пользовательской работы.
+- `Rework -> In Progress`: fresh Codex thread принимает тот же issue, workspace, branches и PR без автоматического reset пользовательской работы.
 - `Human Review -> Merging`: человек одобрил code-mutating candidate.
 - `Merging -> Done`: exact approved PR merged, required checks зелёные, issue links и final commit подтверждены.
 - `Human Review -> Done`: человек одобрил task, который не владеет mergeable PR.
+- `Todo -> Done`: только `task:human`, когда назначенный человек выполнил explicit outcome и приложил required evidence.
+- `In Progress -> Done`: только `task:cleanup` после успешного exact cleanup/reconciliation и Project completion proof; запуск этой issue после terminal acceptance является явной cleanup operation.
 - Любое non-terminal state может перейти в `Canceled` по явному решению человека.
 
 Transient merge или provider failure может повторяться в `Merging`. Любое изменение source, test contract или generated artifact после human approval переводит issue в `Rework`; после новой проверки candidate снова проходит `Human Review`. Branch protection и required GitHub checks не обходятся.
 
 ## Local Task Workspace И Branch Contract
 
-Каждая code-mutating Linear issue владеет одной deterministic task branch в каждом participating repository. Branch name содержит Linear issue identifier и normalized slug. Один cross-repository issue использует один и тот же branch identity во всех repositories. Exact branch и repository list записываются в issue и подтверждаются через GitHub attachments.
+Каждая code-mutating Linear issue владеет одной deterministic task branch `linear/<lowercase-issue-identifier>` в каждом participating repository. Один cross-repository issue использует один и тот же branch identity во всех repositories. Local worktree basename равен lowercase Linear issue identifier. Exact branch, repository list и base branches записываются в issue и подтверждаются через GitHub attachments.
 
-Local runner получает canonical repository URLs из issue и explicit user-level workspace root. Reusable plugin не содержит `/home/andrey/Projects` или другой user-specific absolute path. Для каждого repository он:
+Local runner получает canonical repository URLs из issue и explicit user-level `LINEAR_AGENT_WORKSPACE_ROOT`. Reusable plugin не содержит `/home/andrey/Projects` или другой user-specific absolute path. Перед task mutation runner получает один non-blocking host-local lock по Linear issue identity. Другая active local session с тем же lock предотвращает concurrent execution; process exit освобождает lock, а durable Git transaction state позволяет fresh session продолжить прерванную attempt. Для каждого repository runner:
 
 - находит canonical main checkout только по explicit workspace root и repository identity;
-- проверяет origin и exact base commit;
+- fetch-ит exact remote base branch и при первом dispatch атомарно записывает его current commit как attempt baseline в Linear evidence;
 - создаёт или принимает `.worktree/<linear-issue-identifier>`;
 - создаёт или принимает exact task branch;
+- применяет repository-owned `worktree-bootstrap.yaml` через generic copy/link resource contract, не копируя project-specific bootstrap policy в plugin;
 - сохраняет transaction state только в Git administration space;
 - не меняет main checkout;
 - не принимает совпадающие bytes как ownership proof;
 - сохраняет unrelated user work.
 
-Local transaction state содержит только crash-recovery сведения о Git mutations и не дублирует Linear task contract. После reconciliation или cleanup он удаляется.
+Host-local lock и transaction state содержат только concurrency и crash-recovery сведения и не дублируют Linear task contract. После reconciliation или cleanup durable state удаляется.
+
+`Rework` принимает существующую remote branch, pull request и workspace без destructive reset и не меняет baseline скрыто. Base update или rebase являются candidate mutation, записываются в Linear и инвалидируют прежнее human approval. При crash fresh session восстанавливает состояние из Linear, remote Git/GitHub и owned Git administration transaction, а не из previous chat.
 
 Review и acceptance issues не получают фиктивную write branch. Они используют read-only candidate commits, merged main commits, PR refs или environment identities. Если issue реально получает code-remediation responsibility, она становится отдельной implementation issue с собственной branch.
 
 Branch и PR title содержат Linear issue identifier, чтобы official GitHub integration связывал commits и pull requests с issue. Commit publication использует `agent-workflows:git-commit`. Каждый logical commit сразу push-ится.
 
+## Verification Receipts И Execution Efficiency
+
+Task skills строят dependency-aware verification plan из issue contract и repository instructions. Targeted checks выполняются после завершённого owner slice, applicable full suite — для frozen candidate, live acceptance — только для exact deployed candidate, а fresh terminal semantic audit — после последнего fix.
+
+Reusable receipt требует exact key из command, repository commit set, recursive submodule commits, relevant dependency-lock fingerprints и external environment or release identity. Concise receipt с outcome, UTC time и link на owning log или CI хранится в Linear issue или GitHub check. Совпадение только command или working-tree bytes не разрешает reuse. Mutation инвалидирует только receipts, чьи declared inputs изменились; final full suite и terminal semantic audit не заменяются cached partial checks.
+
+Переход в `Human Review` публикует immutable candidate fingerprint: exact PR head set для code delivery либо exact evidence/environment receipt set для non-code delivery. Human transition в `Merging` или `Done` относится только к этому fingerprint. Любая последующая mutation делает approval stale; `task-merge` или соответствующий task skill переводит issue в `Rework`, а не пытается угадать намерение человека.
+
+Long-running operations сразу публикуют current stage и затем bounded compact progress. Runner ожидает provider event или разумный interval, не делает частый polling и не переносит raw large logs в Codex context. Raw artifacts остаются у CI, repository test output или owning observability system.
+
 ## Manual Skills
+
+### `linear-agent-tools:workflow-configure`
+
+- Подключает или проверяет официальный Linear MCP в user-level Codex configuration и проводит interactive OAuth без сохранения credentials в project files.
+- Создаёт или проверяет exact team statuses, workspace-level Project statuses, role labels и `agent:codex` после preview и explicit approval.
+- Не создаёт Project task graph и не меняет Product repositories.
 
 ### `linear-agent-tools:task-graph-create`
 
@@ -204,47 +310,53 @@ Branch и PR title содержат Linear issue identifier, чтобы official
 
 ### `linear-agent-tools:task-implement`
 
-- Работает только с `task:implementation` issue в `Todo`, `In Progress` или `Rework` и с `dispatchable=true` для нового запуска.
+- Работает только с `task:implementation` issue в `Todo`, `In Progress` или `Rework` и с `dispatchable=true` для нового запуска; evidence-only probe проходит тот же lifecycle без фиктивной branch или PR.
 - Создаёт или принимает exact local worktrees и branches.
 - Каждая `Todo` или `Rework` попытка запускается в fresh Codex thread.
 - Реализует только issue scope, выполняет targeted и applicable full verification, создаёт logical commits, push и PR.
-- Записывает concise evidence и links в Linear и переводит issue в `Human Review`.
+- Записывает reusable verification receipts, candidate fingerprint, concise evidence и links в Linear и переводит issue в `Human Review` только после applicable CI result.
 
 ### `linear-agent-tools:task-review`
 
 - Работает только с `task:review` issue после закрытия blockers.
+- Принимает `Todo`, `In Progress` или `Rework`; новая попытка переводит issue в `In Progress` и запускается в fresh thread.
 - Использует fresh thread и перечитывает current source contracts, exact candidate state и external state.
 - Не исправляет findings скрыто.
-- При finding создаёт или связывает remediation issue, делает её blocker и оставляет review незавершённым.
+- При finding создаёт или связывает remediation issue, делает её blocker и возвращает review в `Todo`.
 - При zero findings публикует concise result и переводит issue в `Human Review`.
 
 ### `linear-agent-tools:task-accept`
 
 - Работает только с `task:acceptance` issue после закрытия blockers.
+- Принимает `Todo`, `In Progress` или `Rework`; новая попытка переводит issue в `In Progress` и запускается в fresh thread.
 - Проверяет полный current outcome, а не только checklist, changed files или prior reports.
-- При finding создаёт remediation blocker и требует нового полного acceptance pass после fix.
+- При finding создаёт remediation blocker, возвращает acceptance в `Todo` и требует нового полного acceptance pass после fix.
 - При fresh zero-finding pass публикует concise result и переводит issue в `Human Review`.
 
 ### `linear-agent-tools:task-merge`
 
 - Работает только с issue в `Merging` после exact human approval.
-- Проверяет approved PR, base, head, required checks и branch protection.
+- Проверяет exact approved PR set, bases, heads, required checks, ordered cross-repository merge plan и branch protection.
 - Повторяет transient provider operations без изменения candidate.
 - При необходимости изменить candidate переводит issue в `Rework` вместо скрытого fix-forward.
-- После merge проверяет final commit и Linear/GitHub links, переводит issue в `Done` и запускает локальную cleanup sequence.
+- После каждого merge проверяет final commit и Linear/GitHub links; после complete ordered set переводит issue в `Done` и запускает локальную cleanup sequence. Partial merge не откатывается скрыто и создаёт exact recovery evidence.
 
 ### `linear-agent-tools:task-cleanup`
 
-- Идемпотентно очищает local worktrees, local task branches и private transaction state exact `Done` или `Canceled` issue.
+- Идемпотентно очищает local worktrees, local and remote task branches и private transaction state exact `Done` или `Canceled` issue.
+- Для `Canceled` закрывает exact linked open pull requests перед удалением exact task branches; terminal human transition является authority для удаления unmerged task-owned state.
+- Выполняет final `task:cleanup` node в `Todo`, `In Progress` или `Rework` через project-owned cleanup commands для declared issue- и project-lifetime resources; уже отсутствующий owned resource является success.
+- После exact reconciliation переводит cleanup issue в `Done`, затем Linear Project в `Completed`, но только когда final acceptance `Done`, все required nodes terminal и unresolved remediation blockers отсутствуют.
+- Для canceled Project выполняет тот же exact reconciliation без повторной активации и сохраняет Project в `Canceled`.
 - Не удаляет Linear issue, Project, comments, evidence, merged commits или unrelated branches.
 - Уже отсутствующий exact in-scope resource считается успешно очищенным.
 - Блокирует только невозможность доказать exact ownership или риск затронуть foreign state.
 
 ## Fresh-Thread И Context Contract
 
-Каждая Linear issue и каждая `Rework` attempt запускается в отдельной fresh Codex thread. Issue description, relations, comments, source links, Git state, PR и current verification являются complete execution context. Chat history от `goal-brainstorm`, другой issue или предыдущей попытки не является required state.
+Каждая agent attempt запускается в отдельной fresh Codex thread: initial `Todo`, `Rework`, `Merging`, review, acceptance, cleanup и crash recovery не продолжают brainstorm или previous attempt thread. Issue description, relations, comments, source links, Git state, PR и current verification являются complete execution context. Chat history от `goal-brainstorm`, другой issue или предыдущей попытки не является required state.
 
-Long-running commands выводят stage events и compact progress. Manual skills не используют частый polling, не передают massive command output в model context и не перечитывают весь workspace без dependency reason. Verification receipts остаются в owning CI, PR и Linear surfaces; отдельный completion ledger не создаётся.
+Issue task contract является единственным durable execution journal. Optional harness-local goal может использоваться только как ephemeral execution aid по явному запросу пользователя и никогда не становится prerequisite или canonical state. Manual skills не перечитывают весь workspace без dependency reason и не создают отдельный completion ledger.
 
 ## Security
 
@@ -252,8 +364,11 @@ Long-running commands выводят stage events и compact progress. Manual sk
 - Coding-agent child process не получает raw tracker credentials, если host-side Linear tool может выполнить operation.
 - Issue content считается untrusted input. Task skills применяют repository instructions, sandbox и approval policy независимо от issue prose.
 - Linear scope ограничивается exact team или Project и required labels.
+- Repository URLs принимаются только из user-approved graph и должны совпасть с canonical origin в configured workspace; arbitrary issue URL не разрешает clone, hook execution или external mutation.
+- Commands из issue являются requirements, а не автоматически trusted shell. Исполняются только repository-owned commands, CI contracts и явно подтверждённые bounded operations.
 - External mutations idempotent и привязаны к stable source keys или issue IDs.
 - Repository origin, base branch, worktree path и branch ownership проверяются до Git mutation.
+- Linear/GraphQL reads полностью paginate; rate-limit и transient errors используют typed bounded retry с server guidance. Polling не используется там, где доступен provider event или direct completion wait.
 - Secrets не записываются в issue descriptions, comments, PR, Git, logs или test fixtures.
 
 ## Stable Development Infrastructure Design
@@ -287,7 +402,8 @@ Long-running commands выводят stage events и compact progress. Manual sk
 До bulk implementation проверить на реальном target:
 
 - official Linear MCP authentication и доступный tool surface;
-- создание Project, issues, labels, statuses и blocker relations;
+- создание и category semantics team issue statuses, Project statuses и labels;
+- создание Project, Project document, issues и blocker relations;
 - чтение exact graph и idempotent lookup по stable source keys;
 - GitHub issue-ID branch and PR linking;
 - остановку active attempt при `Human Review` и terminal semantics `Done`/`Canceled` на уровне local manual runner contract.
@@ -297,7 +413,7 @@ Long-running commands выводят stage events и compact progress. Manual sk
 ### Automated Verification
 
 - Plugin и skill structural validation для всех changed plugins и skills.
-- `agent-plugins` complete pytest suite и focused behavior tests нового graph, state, Git workspace, recovery и cleanup owners.
+- `agent-plugins` complete pytest suite и focused behavior tests нового configuration, graph, activation barrier, state, Git workspace, receipt invalidation, recovery и cleanup owners.
 - Temporary real Git repositories проверяют branch/worktree creation, cross-repository identity, collision rejection, interrupted transactions, user-work preservation, merge handoff и idempotent cleanup.
 - Linear transport tests используют typed fixtures только для deterministic boundary behavior; они не заменяют real integration profile.
 - Behavior-evaluation corpus покрывает direct, indirect, negative и overlap triggers нового `goal-brainstorm` и всех Linear skills на target model.
@@ -307,16 +423,20 @@ Long-running commands выводят stage events и compact progress. Manual sk
 
 В isolated real Linear Project выполнить:
 
-1. Создание source-independent graph минимум из implementation, review и acceptance nodes.
-2. Проверку unresolved blocker как `dispatchable=false` без отдельного blocked status.
-3. Прерывание graph import до activation barrier и idempotent reconciliation без duplicate issues.
-4. Переход root issue `Todo -> In Progress -> Human Review` через fresh Codex session.
-5. Переход `Human Review -> Rework -> In Progress` в новой fresh session с сохранением branch и workspace.
-6. Проверку branch и disposable PR linking по Linear identifier.
-7. Проверку `Human Review -> Merging`, merge preconditions и возврата в `Rework` при candidate mutation.
-8. Запуск review после implementation blockers и acceptance после review blockers.
-9. Создание remediation blocker из finding и повторный fresh review или acceptance pass после fix.
-10. Terminal transition и idempotent local cleanup для `Done` и `Canceled`.
+1. Configuration dry-run, idempotent apply и read-back exact issue status categories, Project statuses и labels.
+2. Создание source-independent graph минимум из evidence-only probe, code implementation, review, acceptance и cleanup nodes.
+3. Проверку blocked issue в `Todo` с `dispatchable=false` без отдельного blocked status и без дополнительного status transition после закрытия blocker.
+4. Прерывание graph import до Project activation и idempotent reconciliation без duplicate issues; ни одна issue Project в `Planned` не запускается.
+5. Единственный activation transition `Planned -> In Progress` после полного read-back proof.
+6. Переход root issue `Todo -> In Progress -> Human Review` через fresh Codex session.
+7. Переход `Human Review -> Rework -> In Progress` в новой fresh session с сохранением branch и workspace.
+8. Проверку branch и disposable PR linking по Linear identifier.
+9. Проверку receipt reuse для exact unchanged inputs и invalidation после commit, lock или environment identity change.
+10. Проверку `Human Review -> Merging`, merge preconditions и возврата в `Rework` при candidate mutation.
+11. Запуск review после implementation blockers и acceptance после review blockers.
+12. Создание remediation blocker из finding, возврат review или acceptance в blocked `Todo` и повторный fresh full pass после fix.
+13. Terminal transition и idempotent local cleanup для `Done` и `Canceled`, включая linked open PR у canceled task.
+14. Выполнение required project-resource cleanup node и Project transition в `Completed` только после final acceptance.
 
 Acceptance обязана доказать, что новый clean Codex thread может выбрать одну ready issue, восстановить весь необходимый context только из Linear, Git/GitHub и stable source contracts и довести task до её следующего human или terminal boundary. Наличие Symphony, AWS resource или brainstorm chat history запрещено как prerequisite.
 
