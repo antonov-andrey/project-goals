@@ -1,0 +1,46 @@
+schema_version: 2
+accepted_checkpoint_id: checkpoint-0001
+task_resource_state: retained
+checkpoint_list:
+- checkpoint_id: checkpoint-0001
+  project_list:
+  - project_path: agent-plugins
+    git_commit_final: 6a0d553e9bf1a3dd958e779d81e51bbc8e7a6872
+  - project_path: arasta-link-docs
+    git_commit_final: f0e8b41815de0c42fd96d25c8364d0cb7fd82111
+  - project_path: brand-size-chart
+    git_commit_final: 91b97c6958543837024810682e3a5cf7b28b1e7c
+  - project_path: browser-runtime
+    git_commit_final: bde12432ae95a54dafbd92e445bcf1a65d698c04
+  - project_path: compose-milvus
+    git_commit_final: 2caaf158ccc9d5f38aebf5de9427e01e634980e0
+  - project_path: compose-mysql
+    git_commit_final: 46b2e289bfe5268591e5681332770314f70fa115
+  - project_path: marketplace-infrastructure
+    git_commit_final: 84620211ec4dc6373bfd9e3a6c21025a47d0b7b8
+  - project_path: marketplace-next-co-uk
+    git_commit_final: 699a62d34412b09f9d80f193df4a1650980a9779
+  - project_path: marketplace-parser
+    git_commit_final: f76571827599ab597b4fb34a392853f534b7e26e
+  - project_path: marketplace-tools
+    git_commit_final: da1720c148720c704037361ad25fe2d662b18555
+  - project_path: marketplace-tr
+    git_commit_final: 20d3ab827c0fa484783455ae2142c2818790b2d4
+  - project_path: marketplace-tr-priority
+    git_commit_final: 9c07b93ce34a496ed337cd936bc8938da18bb32d
+  - project_path: project-standards
+    git_commit_final: 55279ab7f661fd6c37a07ea4405ff32d818c3436
+  - project_path: scrapy-next-deprecated
+    git_commit_final: 9270dcaedb4deb87b7474a84ad75b1765216cb01
+  - project_path: v0-arasta-link
+    git_commit_final: cfd6464ea64d380c1684154c90ec5bc8bb7a0a13
+  - project_path: vpn-runtime
+    git_commit_final: a86f7e72316d5bc9b6df20cfb2341aeea5834959
+  - project_path: workflow-container-contract
+    git_commit_final: 7cbf94c4c191a58061eed2d548f1c69463409829
+  - project_path: workflow-container-runtime
+    git_commit_final: a7d9e0db78d55e61d023a5149a19b4f9cb34bcd6
+  - project_path: workflow-control-center
+    git_commit_final: f5731422114df58b9cae091448eecf310f8cd0df
+  - project_path: workflow-infrastructure
+    git_commit_final: 3e25c55679e13edb48940dd117ab9454adeb9b74
