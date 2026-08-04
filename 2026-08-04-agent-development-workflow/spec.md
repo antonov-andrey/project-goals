@@ -85,7 +85,7 @@ GitHub integration проверяется отдельно до создания
 
 OAuth tokens, API keys и GraphQL credentials не записываются в `project-goals`, plugin source, Linear issues, Git branches, logs или verification receipts. Stable task contract хранит только MCP profile name и non-secret Linear object IDs.
 
-Linear user role и credential capability проверяются раздельно: `isAdmin=true` не считается доказательством admin scope у текущего MCP OAuth token. MCP-managed token не экспортируется и не читается plugin code. После реализации minimal GraphQL boundary `workflow-configure` получает отдельный admin-capable personal API key либо OAuth credential только через non-model-visible user-level secret input, перечитывает exact viewer/team до mutation и сохраняет secret только в host-side provider storage. Если future official MCP покрывает exact admin mutations, отдельный credential не запрашивается. Отсутствующий required credential даёт bounded human setup step и не приводит к partial configuration.
+Для этой acceptance применяется контракт прав доступа учётных данных из `agent-plugins/DESIGN.md`: `isAdmin=true` не считается доказательством `admin` scope у текущего MCP OAuth token, а управляемый MCP token не экспортируется. После реализации minimal GraphQL boundary `workflow-configure` получает отдельный admin-capable credential через принадлежащий provider канал ввода секрета, содержимое которого недоступно модели, перечитывает exact `viewer` и `team` и только затем выполняет approved configuration delta. Отсутствующий credential даёт один bounded human setup step и не приводит к partial configuration.
 
 ## Provider Implementation Structure
 
