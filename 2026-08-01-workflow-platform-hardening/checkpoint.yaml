@@ -1,6 +1,6 @@
 schema_version: 2
 accepted_checkpoint_id: checkpoint-0005
-task_resource_state: retained
+task_resource_state: deleted
 checkpoint_list:
 - checkpoint_id: checkpoint-0001
   project_list:
