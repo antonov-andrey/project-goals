@@ -11,7 +11,11 @@
 - Repository `agent-plugins` содержит plugins `agent-workflows`, `marketplace-agent-tools` и `workflow-container-agent-tools`; отдельного Linear plugin нет.
 - Текущий `agent-workflows:goal-brainstorm` подготавливает implementation worktrees, создаёт `checkpoint.yaml`, активирует persistent goal и запрещает изменение active `goal.md` и `spec.md`.
 - `project-goals/DESIGN.md` связывает каждую goal с одним common-prefix branch set, checkpoint publication, exclusive merge и explicit cleanup.
-- Codex CLI `0.146.0` не имеет настроенного Linear MCP server.
+- В Codex CLI `0.146.0` настроен и через OAuth авторизован user-level MCP server `linear` с exact URL `https://mcp.linear.app/mcp` и scopes `read`/`write`; project-local Linear configuration отсутствует.
+- Авторизованный Linear user имеет ID `71a7a6e4-9a30-4050-9106-de34a9e25b6f`, display name `antonov.andrey`, административные права, active membership и не является guest.
+- OAuth workspace содержит один active team: ID `353a3554-d4c0-4838-bf96-6f8798448419`, name `Andrey Antonov`, key `AND`; Linear Projects ещё не созданы.
+- В team присутствуют стандартные issue statuses `Backlog`, `Todo`, `In Progress`, `Done`, `Canceled` и system-managed `Duplicate`; требуемые `Human Review`, `Rework` и `Merging` отсутствуют.
+- Текущий official MCP tool surface читает issue statuses и выполняет основные Project/issue/document/label operations, но не предоставляет mutation для team issue statuses или workspace Project statuses. Это доказанный configuration gap для contract probe; minimal typed GraphQL boundary допускается только для этих отсутствующих operations и других отдельно доказанных gaps.
 - Remote repository `antonov-andrey/development-infrastructure` был пуст. После явного одобрения пользователя создан canonical `main` с одним нейтральным initial commit `18c8df7846dbd545f6b8370b590b7a9275d33951`; repository не содержит Product или infrastructure implementation.
 - Symphony runtime, Symphony EC2 и Codex worker EC2 не развёрнуты и не входят в текущую implementation boundary.
 
@@ -66,6 +70,20 @@
 - Не добавлять project-local Codex configuration ради Linear.
 - `linear-agent-tools:workflow-configure` обязан создать или проверить exact team issue workflow и workspace-level Project workflow до первой graph publication; `task-graph-create` не исправляет global configuration скрыто.
 - Если официальный MCP не предоставляет одну обязательную graph operation, сначала доказать это contract probe. Затем реализовать минимальный Linear-owned GraphQL boundary в `linear-agent-tools`, не создавая generic CRUD wrapper и не передавая raw token coding-agent child process.
+
+### Linear Acceptance Account Binding
+
+Real integration и end-to-end acceptance этой task выполняются только через user-level MCP profile `linear`, его текущий OAuth workspace и exact team `353a3554-d4c0-4838-bf96-6f8798448419` (`Andrey Antonov`, `AND`) от имени exact Linear user `71a7a6e4-9a30-4050-9106-de34a9e25b6f`. OAuth workspace identity является частью provider authentication context; team name или email не используются как substitute exact identity.
+
+Эта binding принадлежит только acceptance текущей task и не становится default, hardcoded allowlist или Product configuration внутри reusable plugin. Перед первой Linear mutation и после reconnect skill перечитывает authenticated user и team, проверяет exact IDs, `isAdmin=true`, `isGuest=false` и active membership. Несовпадение останавливает operation до mutation и требует явного выбора другого destination; автоматический поиск похожего workspace, user или team по имени запрещён.
+
+В рамках явно запрошенного пользователем real testing эта task вправе в exact bound destination создать или принять только утверждённые missing statuses `Human Review`, `Rework`, `Merging`, role labels, label `agent:codex`, требуемые Project statuses и один isolated acceptance Project с его issues, relations, document и comments. Existing standard statuses принимаются по semantic category и не переименовываются, не удаляются и не создаются повторно. Foreign labels, statuses, Projects и другие workspace settings не изменяются. Planned global delta всё равно показывается в execution output, но отдельное повторное разрешение на тот же exact closed mutation set не требуется.
+
+Acceptance Project получает user-visible name с префиксом `Acceptance` и provider-owned identity из exact team ID и source fingerprint, поэтому repeated acceptance reconciles тот же Project вместо создания duplicates. Project и issues после успешного теста сохраняются в Linear как `Completed` history; отменённый проход сохраняется как `Canceled`. Cleanup удаляет только declared Git, local и external runtime resources и никогда не удаляет Linear history.
+
+GitHub integration проверяется отдельно до создания code-mutating acceptance node. Если установка или расширение repository access требует browser/admin action, workflow останавливается до Linear graph activation, показывает один exact bounded step и после его выполнения повторяет read-back. Пустой diff list или вручную добавленная PR URL не считаются доказательством integration.
+
+OAuth tokens, API keys и GraphQL credentials не записываются в `project-goals`, plugin source, Linear issues, Git branches, logs или verification receipts. Stable task contract хранит только MCP profile name и non-secret Linear object IDs.
 
 ## Provider Implementation Structure
 
