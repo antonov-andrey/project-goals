@@ -476,7 +476,7 @@ Issue task contract является единственным durable execution 
 
 ### Real Local Acceptance Без Symphony
 
-В isolated real Linear Project выполнить:
+В exact bound Linear account/team создать и использовать bounded isolated acceptance Project family из раздела `Linear Acceptance Account Binding`, затем выполнить:
 
 1. Configuration dry-run, idempotent apply и read-back exact issue status categories, Project statuses и labels.
 2. Создание source-independent graph минимум из evidence-only probe, code implementation, review, acceptance и cleanup nodes.
