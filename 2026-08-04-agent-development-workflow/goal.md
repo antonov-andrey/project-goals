@@ -25,5 +25,5 @@
 
 - Выполнить real contract probes official Linear MCP, required GraphQL gaps, issue/Project statuses, labels, documents, blockers и GitHub linking до bulk implementation.
 - Пройти plugin/skill validators, полный `agent-plugins` pytest, focused graph/workspace/recovery/receipt/cleanup tests и behavior evaluation на target model.
-- В isolated real Linear Project доказать полный manual local workflow без Symphony, включая interrupted import, one-transition activation, blocked `Todo`, Rework, exact candidate approval, merge, remediation review loop, final acceptance, canceled cleanup и Project completion.
+- В exact bound Linear account и team из specification создать bounded isolated acceptance Project family и доказать полный manual local workflow без Symphony, включая authenticated-destination guard, configuration reconciliation, interrupted import, one-transition activation, blocked `Todo`, Rework, exact candidate approval, GitHub linking, merge, remediation review loop, final acceptance, canceled cleanup и Project completion.
 - После последнего fix заново выполнить полный semantic and external-state audit всего scope; завершить goal только после свежего прохода без findings и опубликованных closing commits всех participants.
