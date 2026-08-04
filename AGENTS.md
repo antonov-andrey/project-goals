@@ -29,18 +29,19 @@
 - `project-standards:submodule-developer`
 - `project-standards:typescript-developer`
 - `project-standards:zitadel-developer`
+- `agent-workflows:goal-brainstorm`
+- `linear-agent-tools:task-graph-create`
 
 ## Project Contract
 
-- This repository is the canonical tracked coordination owner for cross-repository implementation goals.
-- This repository contains no Product runtime, deployment implementation, reusable workflow implementation, or project source checkout.
-- This repository uses only its canonical `main` checkout. Task branches, linked worktrees, and bootstrap manifests are forbidden.
-- `agent-workflows:goal-brainstorm` owns specification and goal preparation.
-- `agent-workflows:goal-checkpoint` owns checkpoint publication.
-- `agent-workflows:goal-merge` owns one-checkpoint-at-a-time merge and primary-environment acceptance.
-- `agent-workflows:goal-delete` owns explicitly authorized idempotent task-resource cleanup and the retained registry-state transition.
-- Every lifecycle mutation MUST commit and push its exact coordination delta directly to `main` through the serialized transaction owned by the applicable lifecycle skill.
-- Direct edits that bypass the applicable lifecycle skill are forbidden.
+- This repository is the canonical tracked source owner for implementation goals before Linear handoff.
+- One current goal directory contains only `goal.md` and `spec.md`.
+- `agent-workflows:goal-brainstorm` owns source authoring, revision, semantic review, commit, and push before Linear handoff.
+- `linear-agent-tools:task-graph-create` reads one exact Git commit and publishes the operational graph to Linear without mutating this repository.
+- After successful Linear handoff, all task, dependency, review, acceptance, branch, pull-request, merge, and rework state belongs to Linear, Git, and GitHub.
+- This repository contains no task graph, Product runtime, deployment implementation, reusable workflow implementation, project source checkout, task branch, linked worktree, bootstrap manifest, or project-local `.spec` copy.
+- Existing `checkpoint.yaml` files are retained historical records from the superseded pre-Linear lifecycle. New workflows MUST NOT create or mutate them.
+- Direct edits that bypass `agent-workflows:goal-brainstorm` are forbidden for current `goal.md` and `spec.md` authoring.
 
 ## Key Directory Map
 
@@ -56,9 +57,9 @@ project/
 ```
 
 - `AGENTS.md`: repository-root canonical instruction owner.
-- `<common-prefix>/`: one permanent tracked goal-registry directory identified by the exact task common prefix; cleanup never deletes it.
-- `<common-prefix>/checkpoint.yaml`: canonical checkpoint list, accepted-checkpoint pointer, and retained/deleted task-resource state for one task.
-- `<common-prefix>/goal.md`: concise executable objective prepared by `agent-workflows:goal-brainstorm`.
-- `<common-prefix>/spec.md`: task-specific implementation contract prepared by `agent-workflows:goal-brainstorm`.
-- `DESIGN.md`: canonical task-artifact, checkpoint, merge, and deletion design owner.
+- `<common-prefix>/`: one tracked source directory identified by its exact common prefix.
+- `<common-prefix>/checkpoint.yaml`: optional retained historical artifact from the superseded pre-Linear lifecycle; current workflows do not create or mutate it.
+- `<common-prefix>/goal.md`: concise source outcome prepared by `agent-workflows:goal-brainstorm`.
+- `<common-prefix>/spec.md`: complete source implementation contract prepared by `agent-workflows:goal-brainstorm`.
+- `DESIGN.md`: canonical source-artifact and Linear-handoff design owner.
 - `README.md`: concise user-facing repository purpose and layout.

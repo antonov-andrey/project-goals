@@ -1,5 +1,5 @@
 # Project Goals
 
-Этот репозиторий является постоянным tracked registry specification, goal и checkpoint metadata для cross-repository задач. Один task common prefix соответствует одному root directory с файлами `spec.md`, `goal.md` и `checkpoint.yaml`; завершённый `goal-delete` сохраняет эту папку и отмечает удаление task resources в checkpoint metadata.
+This repository stores reviewed goal and specification sources before they are published as operational task graphs in Linear.
 
-Repository использует только canonical checkout ветки `main`: task branches, linked worktrees и bootstrap manifests здесь не создаются. Task lifecycle выполняют skills `agent-workflows:goal-brainstorm`, `agent-workflows:goal-checkpoint`, `agent-workflows:goal-merge` и `agent-workflows:goal-delete`; каждый из них commit-ит и push-ит свой exact coordination delta напрямую в `main`. Ручное изменение task artifacts вне соответствующего workflow не поддерживается.
+Each current source directory contains `goal.md` and `spec.md`. Existing `checkpoint.yaml` files are retained historical records from the superseded workflow and are not used for new work.
